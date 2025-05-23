@@ -7,6 +7,10 @@ Navigate to where you like to keep homemade python packages.
 git clone TBD
 ```
 
+## Requirements
+samtools, bowtie2, usearch, biopython, seqtk (https://github.com/lh3/seqtk)
+
+
 ## Getting started
 ```python
 import sys
