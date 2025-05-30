@@ -160,7 +160,7 @@ def parse_base_string(basestring, qualstring):
     
     return pd.DataFrame.from_dict({'base':baselist, 'qscore': quallist, 'sense': senselist})
 
-def paired_to_consensus(r1_fastq, r2_fastq, consensus_fastq):
+def paired_to_consensus(r1_fastq, r2_fastq, consensus_fastq, program='usearch'):
     """
     Generate a consensus fastq from paired end read Illumina fastq files.
 
@@ -178,8 +178,21 @@ def paired_to_consensus(r1_fastq, r2_fastq, consensus_fastq):
     Returns:
     None
     """
-    usearch_call = f"usearch -fastq_mergepairs {r1_fastq} -reverse {r2_fastq} -fastqout {consensus_fastq} -relabel @"
-    run_sys_command(usearch_call)
+    if program == 'usearch':
+        # Use usearch to merge paired end reads
+        print("Using usearch to merge paired end reads.")
+        usearch_call = f"usearch -fastq_mergepairs {r1_fastq} -reverse {r2_fastq} -fastqout {consensus_fastq} -relabel @"
+        run_sys_command(usearch_call)
+        
+    elif program == 'pandaseq':
+        # Use pandaseq to merge paired end reads
+        print("Using pandaseq to merge paired end reads.")
+        pandaseq_call = f"pandaseq -f {r1_fastq} -r {r2_fastq} -w {consensus_fastq} -l 20 -F"
+        run_sys_command(pandaseq_call)
+
+    else:
+        raise ValueError(f"Unsupported program ({program}). Use 'usearch' or 'pandaseq'.")
+
     return
 
 def extract_rxn_fastq(fastq_file, for_primer0, rep_primer0, out_fastq, spacer_for=True):
@@ -211,8 +224,8 @@ def extract_rxn_fastq(fastq_file, for_primer0, rep_primer0, out_fastq, spacer_fo
     rev_temp_fastq = Path(fastq_file).with_name('rev_temp.fastq')
 
     # use cutadapt in order to extract the reads matching for_primer in the forward sense and in the reverse sense
-    for_cutadapt_call = f"cutadapt -g ^{for_primer} --discard-untrimmed -o {for_temp_fastq} {fastq_file}"
-    rev_cutadapt_call = f"cutadapt -a {rev_primer}$ --discard-untrimmed -o {rev_temp_fastq} {fastq_file}"
+    for_cutadapt_call = f"cutadapt -g ^{for_primer} -m 20 --discard-untrimmed -o {for_temp_fastq} {fastq_file}"
+    rev_cutadapt_call = f"cutadapt -a {rev_primer}$ -m 20 --discard-untrimmed -o {rev_temp_fastq} {fastq_file}"
 
     run_sys_command(for_cutadapt_call)
     run_sys_command(rev_cutadapt_call)
@@ -230,7 +243,7 @@ def extract_rxn_fastq(fastq_file, for_primer0, rep_primer0, out_fastq, spacer_fo
 
     # further filter these reads to find those matching the reverse replicate primer
     # Note that this only needs to be run in one sense since the reads have been rectified.
-    rep_cutadapt_call = f"cutadapt -a {rep_primer}$ --discard-untrimmed -o {out_fastq} {for_temp_fastq}"
+    rep_cutadapt_call = f"cutadapt -a {rep_primer}$ -m 20 --discard-untrimmed -o {out_fastq} {for_temp_fastq}"
     run_sys_command(rep_cutadapt_call)    
 
     # If the spacer is not on the same strand as for_primer we need to reverse complement it in order to be directly analyzing A->G transisitons
