@@ -111,6 +111,42 @@ def parse_base_string(basestring, qualstring):
             bind += 1
             continue
 
+        # elif char in "+-":
+        #     # Handle insertions/deletions
+        #     indel_symbol = char
+        #     indel = [indel_symbol]
+        #     bind += 1
+        #     # Get all digits that represent the indel length
+        #     num_str = ""
+        #     while bind < len(basestring) and basestring[bind].isdigit():
+        #         num_str += basestring[bind]
+        #         bind += 1
+        #     if num_str == "":
+        #         raise ValueError("Expected indel length but found nothing.")
+        #     indel.append(num_str)
+        #     try:
+        #         indel_length = int(num_str)
+        #     except ValueError:
+        #         raise ValueError(f"Invalid indel length: {num_str}")
+        #     # Append the inserted/deleted sequence
+        #     for _ in range(indel_length):
+        #         if bind < len(basestring):
+        #             indel.append(basestring[bind])
+        #             bind += 1
+        #         else:
+        #             raise ValueError("Indel length exceeds available bases.")
+        #     if indel[-1] in '.ATCG':
+        #         sense = '+'
+        #     elif indel[-1] in ',atcg':
+        #         sense = '-'
+        #     else:
+        #         print(indel)
+        #         raise ValueError(f"Problem detecting sense at {bind}")
+        #     senselist.append(sense)   
+        #     baselist.append(''.join(indel))
+        #     quallist.append(pd.NA)
+            # continue
+# ...existing code...
         elif char in "+-":
             # Handle insertions/deletions
             indel_symbol = char
@@ -135,16 +171,15 @@ def parse_base_string(basestring, qualstring):
                     bind += 1
                 else:
                     raise ValueError("Indel length exceeds available bases.")
-            if indel[-1] in '.ATCG':
-                sense = '+'
-            elif indel[-1] in ',atcg':
-                sense = '-'
-            else:
-                raise ValueError(f"Problem detecting sense at {bind}")
-            senselist.append(sense)   
+            # For indels, strand is ambiguous; set to pd.NA
+            senselist.append(pd.NA)
             baselist.append(''.join(indel))
             quallist.append(pd.NA)
             continue
+# ...existing code...
+
+
+
         elif char == '^':
             # Start-of-read marker plus mapping quality; we can either skip or record it.
             # Here, we'll record it as a token without a quality value.
@@ -189,6 +224,12 @@ def paired_to_consensus(r1_fastq, r2_fastq, consensus_fastq, program='usearch'):
         print("Using pandaseq to merge paired end reads.")
         pandaseq_call = f"pandaseq -f {r1_fastq} -r {r2_fastq} -w {consensus_fastq} -l 20 -F"
         run_sys_command(pandaseq_call)
+
+    elif program == 'fastp':
+        # Use fastp to merge paired end reads
+        print("Using fastp to merge paired end reads.")
+        fastp_call = f"fastp -i {r1_fastq} -I {r2_fastq} --merge --merged_out {consensus_fastq} --length_required 20 --thread 4"
+        run_sys_command(fastp_call)
 
     else:
         raise ValueError(f"Unsupported program ({program}). Use 'usearch' or 'pandaseq'.")
